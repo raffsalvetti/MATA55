@@ -1,15 +1,12 @@
 package br.ufba.mata55.banco;
 
 import java.awt.EventQueue;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 import java.sql.SQLException;
-import java.util.List;
 
 import org.h2.tools.Server;
 
-import br.ufba.mata55.banco.data.dao.ContaDAO;
-import br.ufba.mata55.banco.data.dao.MovimentacaoDAO;
-import br.ufba.mata55.banco.data.po.Conta;
-import br.ufba.mata55.banco.data.po.Movimentacao;
 import br.ufba.mata55.banco.gui.BancoMainForm;
 
 /**
@@ -18,33 +15,107 @@ import br.ufba.mata55.banco.gui.BancoMainForm;
  *
  */
 public class BancoMain {
-	private Server server;
+	private BancoMainForm window;
+	private Server h2HttpInterface, h2TcpInterface;
 	
+	/**
+	 * Construtor
+	 */
 	public BancoMain() {
 		startDatabase();
 		startGui();
 	}
 	
+	/**
+	 * Inicia todos os serviços de base de dados
+	 */
 	private void startDatabase() {
 		try {
-			server = Server.createWebServer(new String[]{"-webPort", "9092"}).start();
+			h2HttpInterface = Server.createWebServer(new String[]{"-webPort", "9092"}).start();
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
 		
-		try {
-			new ContaDAO().createTable();
-			new MovimentacaoDAO().createTable();
-		} catch (SQLException e1) {
-			e1.printStackTrace();
+		try{
+			h2HttpInterface = Server.createTcpServer("-tcpPort", "9123", "-tcpAllowOthers").start();
+		} catch(Exception ex) {
+			ex.printStackTrace();
 		}
 	}
 	
+	/**
+	 * Finaliza todos os serviços de base de dados
+	 */
+	private void stopDatabase() {
+		System.out.println("stopDatabase");
+		try {
+			if(h2TcpInterface != null && h2TcpInterface.isRunning(false)) {
+				h2TcpInterface.shutdown();
+			}
+		} catch(Exception e) {
+			e.printStackTrace();
+		}
+		
+		try {
+			if(h2HttpInterface != null && h2HttpInterface.isRunning(false)) {
+				h2HttpInterface.shutdown();
+			}
+		} catch(Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	/**
+	 * Inicializa interface gráfica
+	 */
 	private void startGui(){
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
-					BancoMainForm window = new BancoMainForm();
+					window = new BancoMainForm();
+					window.addWindowListener(new WindowListener() {
+						
+						@Override
+						public void windowOpened(WindowEvent e) {
+							// TODO Auto-generated method stub
+							
+						}
+						
+						@Override
+						public void windowIconified(WindowEvent e) {
+							// TODO Auto-generated method stub
+							
+						}
+						
+						@Override
+						public void windowDeiconified(WindowEvent e) {
+							// TODO Auto-generated method stub
+							
+						}
+						
+						@Override
+						public void windowDeactivated(WindowEvent e) {
+							// TODO Auto-generated method stub
+							
+						}
+						
+						@Override
+						public void windowClosing(WindowEvent e) {
+							stopDatabase();
+						}
+						
+						@Override
+						public void windowClosed(WindowEvent e) {
+							// TODO Auto-generated method stub
+							
+						}
+						
+						@Override
+						public void windowActivated(WindowEvent e) {
+							// TODO Auto-generated method stub
+							
+						}
+					});
 					window.setVisible(true);
 				} catch (Exception e) {
 					e.printStackTrace();

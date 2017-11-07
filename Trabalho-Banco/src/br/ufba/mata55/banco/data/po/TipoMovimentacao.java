@@ -11,7 +11,6 @@ public enum TipoMovimentacao {
 	
 	private String label;
 	private double custo;
-	private double lucroBanco;
 	
 	/**
 	 * Construtor privado do enumerador 
@@ -40,22 +39,6 @@ public enum TipoMovimentacao {
 		return custo * valor;
 	}
 	
-	/**
-	 * Soma o lucro do bando a cada movimentação
-	 * @param value Valor do lucro
-	 */
-	public void adicionarLucroBanco(double value) {
-		lucroBanco += value;
-	}
-	
-	/**
-	 * Retorna o lucro da operação 
-	 * @return Lucro do banco
-	 */
-	public double getLucroBanco(){
-		return lucroBanco;
-	}
-
 	@Override
 	public String toString() {
 		return label;

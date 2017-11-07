@@ -4,18 +4,29 @@ import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import javax.swing.JButton;
 import javax.swing.JDialog;
+import javax.swing.JFormattedTextField;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JLabel;
 import javax.swing.JTextField;
+import javax.swing.text.AbstractDocument;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.DocumentFilter;
+import javax.swing.text.MaskFormatter;
+
+import org.hibernate.exception.ConstraintViolationException;
+
 import javax.swing.JCheckBox;
 
+import br.ufba.mata55.banco.data.dao.ContaDAO;
 import br.ufba.mata55.banco.data.po.Conta;
 
 /**
@@ -26,7 +37,7 @@ import br.ufba.mata55.banco.data.po.Conta;
 public class ContaForm extends JDialog {
 	
 	private static final long serialVersionUID = -174348223292247877L;
-	private JTextField textFieldNumero;
+	private JFormattedTextField textFieldNumero;
 	private JTextField textFieldLimite;
 	private JCheckBox chckbxNewCheckBox;
 	private JLabel labelLimite;
@@ -42,6 +53,7 @@ public class ContaForm extends JDialog {
 	 * e uma interface de eventos para tratar contas
 	 * @param parent Instância do formulário pai
 	 * @param listener Interface de eventos que escutará este formulário
+	 * @throws ParseException 
 	 */
 	public ContaForm(Component parent, ContaListener listener) {
 		this(parent);
@@ -51,6 +63,7 @@ public class ContaForm extends JDialog {
 	/**
 	 * Construtor que recebe a instância do componente que está criando esse formulário 
 	 * @param parent Instância do formulário pai
+	 * @throws ParseException 
 	 */
 	public ContaForm(Component parent) {
 		setModal(true);
@@ -69,29 +82,44 @@ public class ContaForm extends JDialog {
 			
 			@Override
 			public void actionPerformed(ActionEvent e) {
+				double input = 0;
 				for (ContaListener contaListener : contaListeners) {
 					try{
+						if(textFieldNumero.getText().trim().isEmpty())
+							throw new NullPointerException();
+						
+						input = Double.parseDouble(textFieldLimite.getText().trim());
+						if(input < 0)
+							throw new NumberFormatException();
+						
 						if(modificarConta == null){
 							contaListener.novaConta(
 									new Conta(
 											0,
 											textFieldNumero.getText().trim(),
-											Double.parseDouble(textFieldLimite.getText().trim()), 
+											input, 
 											chckbxNewCheckBox.isSelected()
 											)
 									);
+							dispose();
 						} else {
 							modificarConta.setNumero(textFieldNumero.getText().trim()); 
-							modificarConta.setLimite(Double.parseDouble(textFieldLimite.getText().trim())); 
+							modificarConta.setLimite(input); 
 							modificarConta.setEspecial(chckbxNewCheckBox.isSelected());
 							contaListener.modificarConta(modificarConta);
+							dispose();
 						}
-					} catch (Exception ex) {
-						JOptionPane.showMessageDialog(ContaForm.this, "O número da conta e o limite devem ser números", "Ops...", JOptionPane.OK_OPTION);
-						return;
+					} catch (NullPointerException ex1){
+						JOptionPane.showMessageDialog(ContaForm.this, "O número da conta e o limite são obrigatórios!", "Ops...", JOptionPane.OK_OPTION);
+						ex1.printStackTrace();
+					} catch (NumberFormatException ex2) {
+						JOptionPane.showMessageDialog(ContaForm.this, "O valor do campo limite deve ser numérico positivo!", "Ops...", JOptionPane.OK_OPTION);
+						ex2.printStackTrace();
+					} catch (ConstraintViolationException ex3) {
+						JOptionPane.showMessageDialog(ContaForm.this, "O número da conta já foi cadastrado!", "Ops...", JOptionPane.OK_OPTION);
+						ex3.printStackTrace();
 					}
 				}
-				dispose();
 			}
 		});
 		panelButtons.add(buttonSalvar);
@@ -135,7 +163,11 @@ public class ContaForm extends JDialog {
 		JLabel labelNumero = new JLabel("Número:");
 		panelNumero.add(labelNumero);
 		
-		textFieldNumero = new JTextField();
+		try {
+			textFieldNumero = new JFormattedTextField(new MaskFormatter("####-#"));
+		} catch (ParseException e1) {
+			e1.printStackTrace();
+		}
 		labelNumero.setLabelFor(textFieldNumero);
 		panelNumero.add(textFieldNumero);
 		textFieldNumero.setColumns(10);
@@ -149,6 +181,20 @@ public class ContaForm extends JDialog {
 		textFieldLimite = new JTextField();
 		panelLimite.add(textFieldLimite);
 		textFieldLimite.setColumns(10);
+		((AbstractDocument) textFieldLimite.getDocument()).setDocumentFilter(new DocumentFilter(){
+			@Override
+			public void insertString(DocumentFilter.FilterBypass fb, int offset,
+		            String text, AttributeSet attr) throws BadLocationException {
+				if(offset < 10)
+					fb.insertString(offset, text, attr);
+		    }
+			@Override
+		    public void replace(DocumentFilter.FilterBypass fb, int offset, int length,
+		            String text, AttributeSet attrs) throws BadLocationException {
+				if(offset < 10)
+					fb.insertString(offset, text, attrs);
+		    }
+		});
 		
 		JPanel panelAdicional = new JPanel();
 		panelControls.add(panelAdicional);
@@ -226,9 +272,8 @@ public class ContaForm extends JDialog {
 
 	/**
 	 * Prepara esse formulário para buscar uma conta
-	 * @param listConta Lista de contas cadastradas no sistema
 	 */
-	public void buscar(final List<Conta> listConta) {
+	public void buscar() {
 		setTitle("Buscar Conta");
 		buttonSalvar.setVisible(false);
 		buttonBuscar.setVisible(true);
@@ -237,14 +282,14 @@ public class ContaForm extends JDialog {
 			
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				for (Conta conta : listConta) {
-					if(String.valueOf(conta.getNumero()).equals(textFieldNumero.getText())) {
-						for (ContaListener contaListener : contaListeners) {
-							contaListener.buscarConta(conta);
-						}
-						dispose();
-						return;
+				ContaDAO cdao = new ContaDAO();
+				Conta conta = cdao.findByNumero(textFieldNumero.getText());
+				if(conta != null) {
+					for (ContaListener contaListener : contaListeners) {
+						contaListener.buscarConta(conta);
 					}
+					dispose();
+					return;
 				}
 				JOptionPane.showMessageDialog(ContaForm.this, "Nenhuma conta foi encontrada!", "Ops...", JOptionPane.OK_OPTION);
 			}

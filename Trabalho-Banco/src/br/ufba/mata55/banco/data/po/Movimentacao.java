@@ -1,26 +1,54 @@
 package br.ufba.mata55.banco.data.po;
 
-import java.sql.Timestamp;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.Date;
 
-import br.ufba.mata55.banco.annotation.Campo;
-import br.ufba.mata55.banco.annotation.Tabela;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
+import javax.persistence.SequenceGenerator;
+import javax.persistence.Table;
+import javax.persistence.Transient;
 
 /**
  * Classe que define uma Movimentação
  * @author raffaello.salvetti
  *
  */
-@Tabela(nome = "MOVIMENTACAO")
+@Entity
+@Table(name = "MOVIMENTACAO")
 public class Movimentacao extends AbstractPO {
+	
+	@Id
+	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "SEQ_MOVIMENTACAO")
+	@SequenceGenerator(name = "SEQ_MOVIMENTACAO", sequenceName="SEQ_MOVIMENTACAO", allocationSize=1)
+	@Column(name = "CODIGO")
 	private int codigo;
-	private int codConta;
+
+	@Column(name = "DESCRICAO", nullable = true)
 	private String descricao;
+	
+	@Column(name = "DESCRICAO_ADICIONAL", nullable = true)
+	private String descricaoAdicional;
+	
+	@Column(name = "VALOR", nullable = false)
 	private double valor;
+	
+	@Column(name = "COD_TIPO_MOVIMENTACAO", nullable = false, columnDefinition="INTEGER")
 	private TipoMovimentacao tipoMovimentacao;
+	
+	@Column(name = "DATA", nullable = false, insertable = false, updatable = false, columnDefinition="TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
 	private Date data;
+	
+	@ManyToOne
+	@JoinColumn(name="COD_CONTA", nullable = false)
+	private Conta conta;	
+	
+	@Column(name = "IS_TAXA", nullable = false)
+	private boolean isTaxa;
 	
 	public Movimentacao() {}
 	
@@ -30,29 +58,29 @@ public class Movimentacao extends AbstractPO {
 	 * @param valor Valor da movimentação;
 	 * @param tipoMovimentacao Tipo da movimentação
 	 */
-	public Movimentacao(String descricao, double valor, TipoMovimentacao tipoMovimentacao, Date data) {
+	public Movimentacao(Conta conta, String descricao, String descricaoAdicional, double valor, TipoMovimentacao tipoMovimentacao, boolean isTaxa) {
+		this.conta = conta;
 		this.descricao = descricao;
+		this.descricaoAdicional = descricaoAdicional;
 		this.valor = valor;
 		this.tipoMovimentacao = tipoMovimentacao;
-		this.data = data;
+		this.isTaxa = isTaxa;
 	}
 	
+	/**
+	 * Retorna o código da movimentação
+	 * @return Código da movimentação
+	 */
 	public int getCodigo(){
 		return codigo;
 	}
 	
-	@Campo(nome = "CODIGO", chavePrimaria = true)
+	/**
+	 * Define o código da movimentação
+	 * @param codigo Código da movimentação
+	 */
 	public void setCodigo(int codigo){
 		this.codigo = codigo;
-	}
-	
-	public int getCodConta(){
-		return codConta;
-	}
-	
-	@Campo(nome = "COD_CONTA")
-	public void setCodConta(int codConta){
-		this.codConta = codConta;
 	}
 	
 	/**
@@ -63,11 +91,29 @@ public class Movimentacao extends AbstractPO {
 		return descricao;
 	}
 	
-	@Campo(nome = "DESCRICAO")
+	/**
+	 * Define a descricao de uma movimentação
+	 * @param descricao Descricao de uma movimentação
+	 */
 	public void setDescricao(String descricao) {
 		this.descricao = descricao;
 	}
 	
+	/**
+	 * Retorna a descricao adicional de uma movimentação
+	 * @return Descricao adicional de uma movimentação
+	 */
+	public String getDescricaoAdicional() {
+		return descricaoAdicional;
+	}
+
+	/**
+	 * Define a descricao adicional de uma movimentação
+	 */
+	public void setDescricaoAdicional(String descricaoAdicional) {
+		this.descricaoAdicional = descricaoAdicional;
+	}
+
 	/**
 	 * Retorna valor da movimentação
 	 * @return Valor da movimentação
@@ -76,7 +122,9 @@ public class Movimentacao extends AbstractPO {
 		return valor;
 	}
 	
-	@Campo(nome = "VALOR")
+	/**
+	 * Define valor da movimentação
+	 */
 	public void setValor(double valor) {
 		this.valor = valor;
 	}
@@ -89,11 +137,18 @@ public class Movimentacao extends AbstractPO {
 		return tipoMovimentacao;
 	}
 	
-	@Campo(nome = "TIPO_MOVIMENTACAO")
+	/**
+	 * Define o tipo da movimentação pelo código
+	 * @param codTipoMovimentacao Código do tipo de movimentação
+	 */
 	public void setTipoMovimentacao(int codTipoMovimentacao) {
 		this.tipoMovimentacao = TipoMovimentacao.values()[codTipoMovimentacao];
 	}
 	
+	/**
+	 * Define o tipo da movimentação pelo nome do tipo de movimentação
+	 * @param nomeTipoMovimentacao Nome do tipo de movimentação
+	 */
 	public void setTipoMovimentacao(String nomeTipoMovimentacao) {
 		this.tipoMovimentacao = TipoMovimentacao.valueOf(nomeTipoMovimentacao);
 	}
@@ -106,25 +161,51 @@ public class Movimentacao extends AbstractPO {
 		return data;
 	}
 	
-	@Campo(nome = "DATA")
-	public void setData(Timestamp data){
+	/**
+	 * Define a data de uma movimentação
+	 * @param data Data de uma movimentação
+	 */
+	public void setData(Date data){
 		this.data = data;
 	}
 	
-	public void setData(String data){
-		try {
-			this.data = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").parse(data);
-		} catch (ParseException e) {
-			e.printStackTrace();
-		}
+	/**
+	 * Retoirna a conta da movimentação
+	 * @return Conta da movimentação
+	 */
+	public Conta getConta() {
+		return conta;
 	}
 
+	/**
+	 * Define a conta da movimentação
+	 */
+	public void setConta(Conta conta) {
+		this.conta = conta;
+	}
+	
+	/**
+	 * Retorna indicador de taxa
+	 * @return Indicador de taxa
+	 */
+	public boolean isIsTaxa() {
+		return isTaxa;
+	}
+
+	/**
+	 * Define indicador de taxa
+	 */
+	public void setIsTaxa(boolean isTaxa) {
+		this.isTaxa = isTaxa;
+	}
+
+	@Transient
 	@Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + codConta;
 		result = prime * result + codigo;
+		result = prime * result + ((conta == null) ? 0 : conta.hashCode());
 		result = prime * result + ((data == null) ? 0 : data.hashCode());
 		result = prime * result
 				+ ((descricao == null) ? 0 : descricao.hashCode());
@@ -137,6 +218,7 @@ public class Movimentacao extends AbstractPO {
 		return result;
 	}
 
+	@Transient
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj)
@@ -146,9 +228,12 @@ public class Movimentacao extends AbstractPO {
 		if (getClass() != obj.getClass())
 			return false;
 		Movimentacao other = (Movimentacao) obj;
-		if (codConta != other.codConta)
-			return false;
 		if (codigo != other.codigo)
+			return false;
+		if (conta == null) {
+			if (other.conta != null)
+				return false;
+		} else if (!conta.equals(other.conta))
 			return false;
 		if (data == null) {
 			if (other.data != null)
@@ -168,12 +253,12 @@ public class Movimentacao extends AbstractPO {
 		return true;
 	}
 
+	@Transient
 	@Override
 	public String toString() {
-		return "Movimentacao [codigo=" + codigo + ", codConta=" + codConta
-				+ ", descricao=" + descricao + ", valor=" + valor
-				+ ", tipoMovimentacao=" + tipoMovimentacao + ", data=" + data
-				+ "]";
+		return "Movimentacao [codigo=" + codigo + ", descricao=" + descricao
+				+ ", valor=" + valor + ", tipoMovimentacao=" + tipoMovimentacao
+				+ ", data=" + data + ", conta=" + conta + "]";
 	}
 	
 }

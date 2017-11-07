@@ -2,7 +2,6 @@ package br.ufba.mata55.banco.gui.relatoriografico;
 
 import java.awt.Component;
 import java.awt.Dimension;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,8 +14,9 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableModel;
 import javax.swing.table.TableRowSorter;
 
-import br.ufba.mata55.banco.data.po.Conta;
-import br.ufba.mata55.banco.data.po.Movimentacao;
+import br.ufba.mata55.banco.data.bean.RelatorioMovimentacaoBean;
+import br.ufba.mata55.banco.data.dao.ContaDAO;
+import br.ufba.mata55.banco.data.po.TipoMovimentacao;
 
 /**
  * Classe que renderiza um relatório mostrando todos os movimentos do banco
@@ -27,16 +27,12 @@ public class RelatorioMovimentacao extends BasicRelatorioGraficoForm {
 
 	private static final long serialVersionUID = -6512541402466001365L;
 	
-	private List<Conta> contas;
-	
 	/**
 	 * Construtor que recebe um formulário pai e a lista de contas cadastradas no sistema
 	 * @param parent Formulário pai
-	 * @param contas Contas cadastradas no sistema
 	 */
-	public RelatorioMovimentacao(Component parent, List<Conta> contas) {
+	public RelatorioMovimentacao(Component parent) {
 		super(parent, "Relatório de Movimentações");
-		this.contas = contas;
 	}
 
 	/**
@@ -46,22 +42,24 @@ public class RelatorioMovimentacao extends BasicRelatorioGraficoForm {
 	protected Component generateContent(JPanel parent) {
 		JTable tableMovimentacao = new JTable();
 		JScrollPane scrollPaneTabelaMovimentacao = new JScrollPane();
-		int linhas = 0, i = 0, c = 0;
+		int i = 0, c = 0;
 		String columnNames[] = new String[] {"Conta", "Tipo de Movimentação", "Data", "Descrição", "Valor"};
-		for (Conta conta : contas) {
-			linhas += conta.getListMovimentacao().size();
-		}
-		Object data[][] = new Object[linhas][columnNames.length];
-		for (Conta conta : contas) {
-			for (Movimentacao m : conta.getListMovimentacao()) {
-				data[i][c++] = conta.getNumero();
-				data[i][c++] = m.getTipoMovimentacao();
-				data[i][c++] = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss.SSS").format(m.getData());
-				data[i][c++] = m.getDescricao();
-				data[i][c++] = String.format("R$ %.2f", m.getValor());
-				c = 0;
-				i++;
+		
+		ContaDAO cdao = new ContaDAO();
+		List<RelatorioMovimentacaoBean> relatorioMovimentacao = cdao.relatorioMovimentacoes();
+		Object data[][] = new Object[relatorioMovimentacao.size()][columnNames.length];
+		for (RelatorioMovimentacaoBean relatorioMovimentacaoBean : relatorioMovimentacao) {
+			data[i][c++] = relatorioMovimentacaoBean.getCONTA();
+			data[i][c++] = TipoMovimentacao.values()[relatorioMovimentacaoBean.getCOD_TIPO_MOVIMENTACAO()].getLabel();
+			data[i][c++] = relatorioMovimentacaoBean.getDATA();
+			if(relatorioMovimentacaoBean.getDESCRICAO_ADICIONAL() == null || relatorioMovimentacaoBean.getDESCRICAO_ADICIONAL().isEmpty()){
+				data[i][c++] = relatorioMovimentacaoBean.getDESCRICAO();	
+			} else {
+				data[i][c++] = relatorioMovimentacaoBean.getDESCRICAO() + " - " + relatorioMovimentacaoBean.getDESCRICAO_ADICIONAL();
 			}
+			data[i][c++] = String.format("R$ %.2f", relatorioMovimentacaoBean.getVALOR());
+			c = 0;
+			i++;
 		}
 		
 		tableMovimentacao.setModel(new DefaultTableModel(data, columnNames));
